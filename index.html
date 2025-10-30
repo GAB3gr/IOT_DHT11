@@ -1,52 +1,82 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-BR">
 <head>
-  <title>Dashboard IoT</title>
-  <script src="https://cdn.jsdelivr.net/npm/mqtt/dist/mqtt.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login - IoT Dashboard</title>
+<style>
+body{ font-family: Arial; text-align:center; background:#f5f5f5; }
+.container{ max-width:400px; margin:50px auto; padding:20px; background:white; border-radius:10px; box-shadow:0 2px 10px rgba(0,0,0,0.2); }
+input, button{ width:100%; padding:10px; margin-top:10px; border-radius:6px; border:none; font-size:16px; }
+button{ background:#2563eb; color:white; cursor:pointer; }
+button:hover{ background:#1e40af; }
+a{ text-decoration:none; color:#2563eb; }
+p{ margin-top:10px; }
+</style>
 </head>
 <body>
-  <h2>Monitoramento DHT11</h2>
-  <canvas id="grafico" width="400" height="200"></canvas>
+<div class="container" id="loginContainer">
+<h2>Login</h2>
+<form id="loginForm">
+<input type="text" id="username" placeholder="Usuário" required>
+<input type="password" id="password" placeholder="Senha" required>
+<button type="submit">Entrar</button>
+</form>
+<p id="errorMsg"></p>
+<p>Não tem conta? <a href="#" id="showRegister">Crie uma aqui</a></p>
+</div>
 
-  <script>
-    const client = mqtt.connect("wss://broker.hivemq.com:8884/mqtt");
+<div class="container" id="registerContainer" style="display:none;">
+<h2>Cadastrar</h2>
+<form id="registerForm">
+<input type="text" id="newUser" placeholder="Usuário" required>
+<input type="password" id="newPass" placeholder="Senha" required>
+<button type="submit">Cadastrar</button>
+</form>
+<p id="msg"></p>
+<p>Já tem conta? <a href="#" id="showLogin">Voltar ao login</a></p>
+</div>
 
-    const labels = [];
-    const tempData = [];
-    const humData = [];
+<script>
+const loginContainer = document.getElementById("loginContainer");
+const registerContainer = document.getElementById("registerContainer");
 
-    const ctx = document.getElementById("grafico").getContext("2d");
-    const chart = new Chart(ctx, {
-      type: "line",
-      data: {
-        labels: labels,
-        datasets: [
-          { label: "Temperatura (°C)", data: tempData, borderColor: "red", fill: false },
-          { label: "Umidade (%)", data: humData, borderColor: "blue", fill: false }
-        ]
-      }
-    });
+document.getElementById("showRegister").addEventListener("click", ()=>{
+loginContainer.style.display="none";
+registerContainer.style.display="block";
+});
+document.getElementById("showLogin").addEventListener("click", ()=>{
+registerContainer.style.display="none";
+loginContainer.style.display="block";
+});
 
-    client.on("connect", () => {
-      console.log("Conectado ao MQTT");
-      client.subscribe("senai/iot/dht11");
-    });
+document.getElementById("registerForm").addEventListener("submit", (e)=>{
+e.preventDefault();
+const user = document.getElementById("newUser").value.trim();
+const pass = document.getElementById("newPass").value.trim();
+const users = JSON.parse(localStorage.getItem("users")) || {};
+if(users[user]){
+document.getElementById("msg").textContent="Usuário já existe!";
+}else{
+users[user]=pass;
+localStorage.setItem("users", JSON.stringify(users));
+document.getElementById("msg").textContent="Conta criada com sucesso!";
+setTimeout(()=>{ loginContainer.style.display="block"; registerContainer.style.display="none"; },1000);
+}
+});
 
-    client.on("message", (topic, message) => {
-      const data = JSON.parse(message.toString());
-      const time = new Date().toLocaleTimeString();
-
-      labels.push(time);
-      tempData.push(data.temperatura);
-      humData.push(data.umidade);
-
-      if (labels.length > 20) {
-        labels.shift(); tempData.shift(); humData.shift();
-      }
-
-      chart.update();
-    });
-  </script>
+document.getElementById("loginForm").addEventListener("submit",(e)=>{
+e.preventDefault();
+const user = document.getElementById("username").value.trim();
+const pass = document.getElementById("password").value.trim();
+const users = JSON.parse(localStorage.getItem("users")) || {};
+if(users[user] && users[user]===pass){
+localStorage.setItem("loggedUser", user);
+window.location.href="dashboard.html";
+}else{
+document.getElementById("errorMsg").textContent="Usuário ou senha incorretos!";
+}
+});
+</script>
 </body>
 </html>

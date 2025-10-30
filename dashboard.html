@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard IoT</title>
+<script src="https://cdn.jsdelivr.net/npm/mqtt/dist/mqtt.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+body{ font-family:Arial; margin:0; padding:10px; background:#f5f5f5; color:#222; transition:0.3s; }
+.dark{ background:#121212; color:#eee; }
+header{ display:flex; justify-content:space-between; align-items:center; background:#2563eb; color:white; padding:10px 20px; }
+canvas{ width:100% !important; height:auto !important; margin-top:20px; }
+button{ margin:10px 5px; padding:10px 15px; border:none; border-radius:8px; cursor:pointer; }
+#toggleTheme{ background:#555; color:white; }
+#logoutBtn{ background:#e74c3c; color:white; }
+</style>
+</head>
+<body>
+<header>
+<h2>Dashboard IoT</h2>
+<div>
+<button id="toggleTheme">🌙 Modo Escuro</button>
+<button id="logoutBtn">Sair</button>
+</div>
+</header>
+
+<p>Usuário logado: <b id="username"></b></p>
+<canvas id="grafico"></canvas>
+
+<script>
+const user = localStorage.getItem("loggedUser");
+if(!user) window.location.href="index.html";
+document.getElementById("username").textContent=user;
+
+// MQTT via WebSocket (correção)
+const client = mqtt.connect("wss://broker.hivemq.com:8000/mqtt");
+const topicDados = "senai/iot/dht11";
+
+const labels=[], tempData=[], humData=[];
+const ctx = document.getElementById("grafico").getContext("2d");
+const chart = new Chart(ctx,{ type:"line", data:{labels, datasets:[
+{label:"Temperatura (°C)", data: tempData, borderColor:"red", fill:false},
+{label:"Umidade (%)", data: humData, borderColor:"blue", fill:false}
+]}, options:{responsive:true} });
+
+client.on("connect",()=>{
+console.log("MQTT Conectado");
+client.subscribe(topicDados);
+});
+
+client.on("message",(topic,message)=>{
+if(topic===topicDados){
+try{
+const data = JSON.parse(message.toString());
+const time = new Date().toLocaleTimeString();
+labels.push(time);
+tempData.push(data.temperatura);
+humData.push(data.umidade);
+if(labels.length>20){ labels.shift(); tempData.shift(); humData.shift(); }
+chart.update();
+}catch(e){
+console.log("Erro ao parsear mensagem:", message.toString());
+}
+}
+});
+
+document.getElementById("toggleTheme").addEventListener("click", ()=>{
+document.body.classList.toggle("dark");
+});
+document.getElementById("logoutBtn").addEventListener("click", ()=>{
+localStorage.removeItem("loggedUser");
+window.location.href="index.html";
+});
+</script>
+</body>
+</html>
